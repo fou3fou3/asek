@@ -1,0 +1,3 @@
+C:/Users/fouad/Desktop/programming/asek/build/CMakeFiles/asek.dir
+C:/Users/fouad/Desktop/programming/asek/build/CMakeFiles/edit_cache.dir
+C:/Users/fouad/Desktop/programming/asek/build/CMakeFiles/rebuild_cache.dir

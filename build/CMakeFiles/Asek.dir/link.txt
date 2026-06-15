@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\asek.dir/objects.a
+C:\ProgramData\mingw64\mingw64\bin\ar.exe qc CMakeFiles\asek.dir/objects.a @CMakeFiles\asek.dir\objects1.rsp
+C:\ProgramData\mingw64\mingw64\bin\g++.exe -std=c++23 -Wl,--whole-archive CMakeFiles\asek.dir/objects.a -Wl,--no-whole-archive -o asek.exe -Wl,--out-implib,libasek.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\asek.dir\linkLibs.rsp
