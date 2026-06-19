@@ -137,7 +137,7 @@ void index_tf_idf()
 	std::cout << numberOfDocuments << "\n";
 
 	// Calculating idfs + multiplying them by all the tfs in the hashmap to make it the full map of tf-idfs
-	for (auto word : tfIdfOfAllWords)
+	for (auto &word : tfIdfOfAllWords)
 	{
 		double idf = std::log10(1.0f * numberOfDocuments / word.second.size());
 
