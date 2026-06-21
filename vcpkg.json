@@ -1,0 +1,14 @@
+{
+	"name": "asek",
+	"version-string": "0.1.0",
+	"dependencies": [
+		{
+			"name": "imgui",
+			"features": [
+				"opengl3-binding",
+				"glfw-binding"
+			]
+		},
+		"glfw3"
+	]
+}
