@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 void read_words_frequencies_from_buffer(
     const std::vector<char> &buffer,
     std::unordered_map<std::string, uint32_t> &wordsFrequencies,
@@ -77,8 +76,7 @@ void get_words_frequencies_from_document(
 size_t calculate_tf_of_all_words(
     const std::filesystem::path &dirPath,
     std::unordered_map<std::string, std::unordered_map<std::string, double>>
-        &tfIdfOfAllWords,
-    std::unordered_map<std::string, double> &documentsMagnitudes) {
+        &tfIdfOfAllWords) {
   size_t numberOfDocuments = 0;
 
   if (std::filesystem::exists(dirPath) &&
@@ -89,7 +87,6 @@ size_t calculate_tf_of_all_words(
             std::filesystem::is_regular_file(entry)) {
           std::unordered_map<std::string, uint32_t> documentWordsFrequencies;
           uint32_t numberOfWordsInDocument;
-          double documentSquaredSum = 0;
           numberOfDocuments++;
 
           std::string fileName = entry.path().filename().string();
@@ -98,14 +95,11 @@ size_t calculate_tf_of_all_words(
                                               numberOfWordsInDocument);
 
           for (auto wordFrequency : documentWordsFrequencies) {
-            double tfIdfResult =
+            double tfResult =
                 (1.0f * wordFrequency.second) / numberOfWordsInDocument;
 
-            tfIdfOfAllWords[wordFrequency.first][fileName] = tfIdfResult;
-            documentSquaredSum += std::pow(tfIdfResult, 2);
+            tfIdfOfAllWords[wordFrequency.first][fileName] = tfResult;
           }
-
-          documentsMagnitudes[fileName] = std::sqrt(documentSquaredSum);
         }
       } catch (const std::filesystem::filesystem_error &e) {
         std::cerr << "Error: " << e.what() << "\n";
@@ -123,12 +117,11 @@ void index_tf_idf() {
   std::unordered_map<std::string, std::unordered_map<std::string, double>>
       tfIdfOfAllWords;
   size_t numberOfDocuments;
-  std::unordered_map<std::string, double> documentsMagnitudes;
+  std::unordered_map<std::string, double> documentsTfIdfSumSquared;
 
   try {
     // Adds tfs to the map to be used
-    numberOfDocuments = calculate_tf_of_all_words(dirPath, tfIdfOfAllWords,
-                                                  documentsMagnitudes);
+    numberOfDocuments = calculate_tf_of_all_words(dirPath, tfIdfOfAllWords);
     // tfIdfOfAllWords is only a map of word -> tf at this point
   } catch (const std::filesystem::filesystem_error &e) {
     std::cerr << "Error: " << e.what() << "\n";
@@ -143,15 +136,18 @@ void index_tf_idf() {
     double idf = std::log10(1.0f * numberOfDocuments / word.second.size());
 
     for (auto &document : word.second) {
-      document.second = document.second * idf;
+      double tfIdfResult = document.second * idf;
+      document.second = tfIdfResult;
+
+      documentsTfIdfSumSquared[document.first] += std::pow(tfIdfResult, 2);
     }
   } // @TODO tfIdfOfAllWords should be a map of {word: [{document: tfidf}]}
     // instead of {word: {document:tfidf}}
 
   std::cout << sizeof(tfIdfOfAllWords);
 
-  nlohmann::json j =
-      std::make_tuple(tfIdfOfAllWords, numberOfDocuments, documentsMagnitudes);
+  nlohmann::json j = std::make_tuple(tfIdfOfAllWords, numberOfDocuments,
+                                     documentsTfIdfSumSquared);
 
   std::ofstream file(TFIDF_INDEX_PATH);
   file << j.dump(4);

@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
       auto tfIdfIndex = extract_json_from_file(TFIDF_INDEX_PATH);
       auto tfIdfOfAllWords = tfIdfIndex[0];
       auto numberOfDocuments = tfIdfIndex[1];
-      auto documentsMagnitudes = tfIdfIndex[2];
+      auto documentsTfIdfSumSquared = tfIdfIndex[2];
 
       std::cout << numberOfDocuments << "\n";
 
@@ -38,8 +38,9 @@ int main(int argc, char *argv[]) {
         std::cin >> query;
         std::cout << "\n";
 
-        auto searchResults = search_tfidf(
-            tfIdfOfAllWords, query, numberOfDocuments, documentsMagnitudes);
+        auto searchResults =
+            search_tfidf(tfIdfOfAllWords, query, numberOfDocuments,
+                         documentsTfIdfSumSquared);
 
         for (auto result : searchResults | std::views::reverse) {
           std::cout << "URL: " << DATA_DIR << "//" << result.document << "\n";

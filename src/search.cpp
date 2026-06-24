@@ -20,7 +20,7 @@ nlohmann::basic_json<> extract_json_from_file(std::string filePath) {
 std::multiset<SearchResult, CompareSearchResults>
 search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
              size_t numberOfDocuments,
-             std::unordered_map<std::string, double> documentsMagnitudes) {
+             std::unordered_map<std::string, double> documentsTfIdfSumSquared) {
   std::multiset<SearchResult, CompareSearchResults> searchResults;
 
   std::transform(query.begin(), query.end(), query.begin(),
@@ -49,12 +49,12 @@ search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
 
     // Check if the word exists in our index
     if (tfIdfOfAllWords.contains(it->first)) {
-      querySquaredSum += std::pow(it->second, 2);
-
       // Compute tf-idf of words in the query
       it->second = ((1.0f * it->second) / numberOfWordsInQuery) *
                    std::log10(1.0f * numberOfDocuments /
                               tfIdfOfAllWords[it->first].size());
+
+      querySquaredSum += std::pow(it->second, 2);
 
       // Fill documentsQueryWordsTfIdf
       for (auto &[document, tfidf] : tfIdfOfAllWords[it->first].items()) {
@@ -81,9 +81,11 @@ search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
       }
     }
 
+    double documentMagnitude =
+        std::sqrt(documentsTfIdfSumSquared[document.first]);
+
     double cosineSimilarity =
-        (queryDocumentMultipSum) /
-        (queryMagnitude * documentsMagnitudes[document.first]);
+        (queryDocumentMultipSum) / (queryMagnitude * documentMagnitude);
 
     searchResults.insert({document.first, cosineSimilarity});
   }
