@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(imgui CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
+find_package(OpenGL REQUIRED)
 
 add_executable(asek
     src/main.cpp
@@ -18,7 +19,7 @@ add_executable(asek
 target_link_libraries(asek PRIVATE 
     imgui::imgui
     glfw
-	opengl32
+	OpenGL::GL
 )
 
 target_include_directories(asek PRIVATE include)
