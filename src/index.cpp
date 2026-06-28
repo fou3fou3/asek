@@ -1,14 +1,30 @@
 #include "globals.hpp"
+#include "tfIdfIndex_generated.h"
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+
+void SaveFlatBufferToDisk(flatbuffers::FlatBufferBuilder &builder,
+                          const std::string &filename) {
+  uint8_t *buf = builder.GetBufferPointer();
+  size_t size = builder.GetSize();
+
+  std::ofstream outfile(filename, std::ios::binary | std::ios::out);
+
+  if (!outfile.is_open()) {
+    std::cerr << "Failed to open file for writing: " << filename << std::endl;
+    return;
+  }
+
+  outfile.write(reinterpret_cast<const char *>(buf), size);
+  outfile.close();
+}
 
 void read_words_frequencies_from_buffer(
     const std::vector<char> &buffer,
@@ -55,6 +71,7 @@ void get_words_frequencies_from_document(
     const std::filesystem::directory_entry &entry,
     std::unordered_map<std::string, uint32_t> &wordsFrequencies,
     uint32_t &numberOfWordsInDocument) {
+
   std::ifstream document(entry.path(), std::ios::binary | std::ios::ate);
 
   if (!document.is_open()) {
@@ -85,6 +102,7 @@ size_t calculate_tf_of_all_words(
       try {
         if (std::filesystem::exists(entry.path()) &&
             std::filesystem::is_regular_file(entry)) {
+
           std::unordered_map<std::string, uint32_t> documentWordsFrequencies;
           uint32_t numberOfWordsInDocument;
           numberOfDocuments++;
@@ -95,10 +113,9 @@ size_t calculate_tf_of_all_words(
                                               numberOfWordsInDocument);
 
           for (auto wordFrequency : documentWordsFrequencies) {
-            double tfResult =
+            tfIdfOfAllWords[wordFrequency.first][fileName] =
                 (1.0f * wordFrequency.second) / numberOfWordsInDocument;
-
-            tfIdfOfAllWords[wordFrequency.first][fileName] = tfResult;
+            ;
           }
         }
       } catch (const std::filesystem::filesystem_error &e) {
@@ -115,43 +132,65 @@ size_t calculate_tf_of_all_words(
 void index_tf_idf() {
   std::filesystem::path dirPath = DATA_DIR;
   std::unordered_map<std::string, std::unordered_map<std::string, double>>
-      tfIdfOfAllWords;
+      tfOfAllWords;
   size_t numberOfDocuments;
   std::unordered_map<std::string, double> documentsTfIdfSumSquared;
 
   try {
-    // Adds tfs to the map to be used
-    numberOfDocuments = calculate_tf_of_all_words(dirPath, tfIdfOfAllWords);
-    // tfIdfOfAllWords is only a map of word -> tf at this point
+    numberOfDocuments = calculate_tf_of_all_words(dirPath, tfOfAllWords);
   } catch (const std::filesystem::filesystem_error &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }
 
-  std::cout << tfIdfOfAllWords.size() << "\n";
-  std::cout << numberOfDocuments << "\n";
+  flatbuffers::FlatBufferBuilder builder(4096);
+  std::vector<flatbuffers::Offset<tfIdfIndex::WordsToDocumentsTfIdf>>
+      tfIdfIndexContainer;
 
-  // Calculating idfs + multiplying them by all the tfs in the hashmap to make
-  // it the full map of tf-idfs
-  for (auto &word : tfIdfOfAllWords) {
-    double idf = std::log10(1.0f * numberOfDocuments / word.second.size());
+  for (const auto &[word, documentsTf] : tfOfAllWords) {
 
-    for (auto &document : word.second) {
+    std::vector<flatbuffers::Offset<tfIdfIndex::DocumentTfIdf>>
+        documentsTfIdfContainer;
+    double idf = std::log10(1.0f * numberOfDocuments / documentsTf.size());
+
+    for (auto &document : documentsTf) {
       double tfIdfResult = document.second * idf;
-      document.second = tfIdfResult;
+
+      auto inner_entry = tfIdfIndex::CreateDocumentTfIdf(
+          builder, builder.CreateString(document.first), tfIdfResult);
+      documentsTfIdfContainer.push_back(inner_entry);
 
       documentsTfIdfSumSquared[document.first] += std::pow(tfIdfResult, 2);
     }
-  } // @TODO tfIdfOfAllWords should be a map of {word: [{document: tfidf}]}
-    // instead of {word: {document:tfidf}}
 
-  std::cout << sizeof(tfIdfOfAllWords);
+    auto sortedDocumentsTfIdfContainer =
+        builder.CreateVectorOfSortedTables(&documentsTfIdfContainer);
 
-  nlohmann::json j = std::make_tuple(tfIdfOfAllWords, numberOfDocuments,
-                                     documentsTfIdfSumSquared);
+    auto wordTfIdfs = tfIdfIndex::CreateWordsToDocumentsTfIdf(
+        builder, builder.CreateString(word), sortedDocumentsTfIdfContainer);
+    tfIdfIndexContainer.push_back(wordTfIdfs);
+  }
+  auto sortedTfIdfIndexContainer =
+      builder.CreateVectorOfSortedTables(&tfIdfIndexContainer);
 
-  std::ofstream file(TFIDF_INDEX_PATH);
-  file << j.dump(4);
-  file.close();
+  std::vector<flatbuffers::Offset<tfIdfIndex::DocumentsTfIdfSquaredSum>>
+      documentsTfIdfsSumContainer;
+  for (const auto &[str_val, dbl_val] : documentsTfIdfSumSquared) {
+
+    auto documentTfIdfSum = tfIdfIndex::CreateDocumentsTfIdfSquaredSum(
+        builder, builder.CreateString(str_val), dbl_val);
+    documentsTfIdfsSumContainer.push_back(documentTfIdfSum);
+  }
+  auto finalDocumentsTfIdfsSumContainer =
+      builder.CreateVector(documentsTfIdfsSumContainer);
+
+  auto root_payload = tfIdfIndex::CreateMainPayload(
+      builder, sortedTfIdfIndexContainer, numberOfDocuments,
+      finalDocumentsTfIdfsSumContainer);
+  builder.Finish(root_payload);
+
+  uint8_t *buf = builder.GetBufferPointer();
+
+  SaveFlatBufferToDisk(builder, TFIDF_INDEX_PATH);
 }
 
 void index() {

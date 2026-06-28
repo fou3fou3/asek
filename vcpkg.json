@@ -9,6 +9,7 @@
 				"glfw-binding"
 			]
 		},
-		"glfw3"
+		"glfw3",
+		"flatbuffers"
 	]
 }

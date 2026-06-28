@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 
+// If this is to be used in the future move it elsewhere.
 nlohmann::basic_json<> extract_json_from_file(std::string filePath) {
   std::ifstream file(filePath);
 
@@ -81,6 +82,8 @@ search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
       }
     }
 
+    // We calculate this on the fly because we dont want to loop all documents
+    // for another time in indexing
     double documentMagnitude =
         std::sqrt(documentsTfIdfSumSquared[document.first]);
 
