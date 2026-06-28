@@ -12,7 +12,7 @@ table WordsToDocumentsTfIdf {
 }
 
 
-table DocumentsTfIdfSquaredSum {
+table DocumentMagnitude {
   first: string;
   second: double;
 }
@@ -21,7 +21,7 @@ table DocumentsTfIdfSquaredSum {
 table MainPayload {
   tfidf_all_words: [WordsToDocumentsTfIdf];    // tf idf of all words (and theire corresponding documents)
   some_uint: uint32;                  // Number of documents
-  documents_tfidfs_squared_sum: [DocumentsTfIdfSquaredSum];	  // Documents words tf idfs squared sum
+  documents_magnitudes: [DocumentMagnitude];	  // Documents words tf idfs squared sum
 }
 
 root_type MainPayload;

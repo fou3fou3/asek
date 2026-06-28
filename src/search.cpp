@@ -82,8 +82,8 @@ search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
       }
     }
 
-    // We calculate this on the fly because we dont want to loop all documents
-    // for another time in indexing
+    // Remove this after finishing flatbuffers for search because they are
+    // precalculated
     double documentMagnitude =
         std::sqrt(documentsTfIdfSumSquared[document.first]);
 

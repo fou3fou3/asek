@@ -172,20 +172,21 @@ void index_tf_idf() {
   auto sortedTfIdfIndexContainer =
       builder.CreateVectorOfSortedTables(&tfIdfIndexContainer);
 
-  std::vector<flatbuffers::Offset<tfIdfIndex::DocumentsTfIdfSquaredSum>>
-      documentsTfIdfsSumContainer;
+  std::vector<flatbuffers::Offset<tfIdfIndex::DocumentMagnitude>>
+      documentsMagnitudesContainer;
   for (const auto &[str_val, dbl_val] : documentsTfIdfSumSquared) {
 
-    auto documentTfIdfSum = tfIdfIndex::CreateDocumentsTfIdfSquaredSum(
-        builder, builder.CreateString(str_val), dbl_val);
-    documentsTfIdfsSumContainer.push_back(documentTfIdfSum);
+    auto documentTfIdfSum = tfIdfIndex::CreateDocumentMagnitude(
+        builder, builder.CreateString(str_val), std::sqrt(dbl_val));
+
+    documentsMagnitudesContainer.push_back(documentTfIdfSum);
   }
-  auto finalDocumentsTfIdfsSumContainer =
-      builder.CreateVector(documentsTfIdfsSumContainer);
+  auto finalDocumentsMagnitudesContainer =
+      builder.CreateVector(documentsMagnitudesContainer);
 
   auto root_payload = tfIdfIndex::CreateMainPayload(
       builder, sortedTfIdfIndexContainer, numberOfDocuments,
-      finalDocumentsTfIdfsSumContainer);
+      finalDocumentsMagnitudesContainer);
   builder.Finish(root_payload);
 
   uint8_t *buf = builder.GetBufferPointer();
