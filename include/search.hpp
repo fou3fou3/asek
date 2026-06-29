@@ -1,9 +1,8 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
+#include "tfIdfIndex_generated.h"
 #include <set>
 #include <string>
-#include <unordered_map>
 
 struct SearchResult {
   std::string document;
@@ -16,9 +15,7 @@ struct CompareSearchResults {
   }
 };
 
-nlohmann::basic_json<> extract_json_from_file(std::string filePath);
+std::vector<char> load_flatbuffer_from_disk(const std::string &filename);
 
 std::multiset<SearchResult, CompareSearchResults>
-search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
-             size_t numberOfDocuments,
-             std::unordered_map<std::string, double> documentsMagnitudes);
+search_tfidf(const tfIdfIndex::MainPayload *tfIdfIndex, std::string query);

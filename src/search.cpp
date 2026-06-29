@@ -1,27 +1,39 @@
 #include "search.hpp"
+#include "tfIdfIndex_generated.h"
 #include <cmath>
 #include <cstdint>
 #include <fstream>
-#include <nlohmann/json.hpp>
+#include <iostream>
 #include <set>
+#include <sstream>
 #include <string>
+
+
 #include <unordered_map>
 
-// If this is to be used in the future move it elsewhere.
-nlohmann::basic_json<> extract_json_from_file(std::string filePath) {
-  std::ifstream file(filePath);
+std::vector<char> load_flatbuffer_from_disk(const std::string &filename) {
+  std::ifstream infile(filename, std::ios::binary | std::ios::ate);
 
-  if (!file.is_open()) {
-    throw std::runtime_error("Failed to open file: " + filePath);
+  if (!infile.is_open()) {
+    std::cerr << "Failed to open file for reading: " << filename << std::endl;
+    return {};
   }
 
-  return nlohmann::json::parse(file);
+  std::streamsize size = infile.tellg();
+  infile.seekg(0, std::ios::beg);
+
+  std::vector<char> buffer(size);
+
+  if (!infile.read(buffer.data(), size)) {
+    std::cerr << "Error reading file data." << std::endl;
+  }
+
+  return buffer;
 }
 
 std::multiset<SearchResult, CompareSearchResults>
-search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
-             size_t numberOfDocuments,
-             std::unordered_map<std::string, double> documentsTfIdfSumSquared) {
+search_tfidf(const tfIdfIndex::MainPayload *tfIdfIndex, std::string query) {
+  auto tfIdfWords = tfIdfIndex->tfidf_all_words();
   std::multiset<SearchResult, CompareSearchResults> searchResults;
 
   std::transform(query.begin(), query.end(), query.begin(),
@@ -43,27 +55,26 @@ search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
   }
 
   std::unordered_map<std::string, std::unordered_map<std::string, float>>
-      documentsQueryWordsTfIdf; // An inverted tfIdfOfAllWords with documents as
-                                // keys and only the query words
+      documentsQueryWordsTfIdf;
 
   for (auto it = queryWordsTfIdf.begin(); it != queryWordsTfIdf.end();) {
 
     // Check if the word exists in our index
-    if (tfIdfOfAllWords.contains(it->first)) {
+    if (auto word = tfIdfWords->LookupByKey(it->first)) {
       // Compute tf-idf of words in the query
       it->second = ((1.0f * it->second) / numberOfWordsInQuery) *
-                   std::log10(1.0f * numberOfDocuments /
-                              tfIdfOfAllWords[it->first].size());
+                   std::log10(1.0f * tfIdfIndex->number_of_documents() /
+                              word->values()->size());
 
       querySquaredSum += std::pow(it->second, 2);
 
       // Fill documentsQueryWordsTfIdf
-      for (auto &[document, tfidf] : tfIdfOfAllWords[it->first].items()) {
-        documentsQueryWordsTfIdf[document][it->first] = tfidf;
+      for (const tfIdfIndex::DocumentTfIdf *documentTfIdf : *word->values()) {
+        documentsQueryWordsTfIdf[documentTfIdf->key()->str()][it->first] =
+            documentTfIdf->value();
       }
 
       ++it;
-
     } else {
       it = queryWordsTfIdf.erase(
           it); // Erase the word from the query because its not needed
@@ -82,10 +93,9 @@ search_tfidf(const nlohmann::basic_json<> &tfIdfOfAllWords, std::string query,
       }
     }
 
-    // Remove this after finishing flatbuffers for search because they are
-    // precalculated
-    double documentMagnitude =
-        std::sqrt(documentsTfIdfSumSquared[document.first]);
+    double documentMagnitude = tfIdfIndex->documents_magnitudes()
+                                   ->LookupByKey(document.first)
+                                   ->second();
 
     double cosineSimilarity =
         (queryDocumentMultipSum) / (queryMagnitude * documentMagnitude);

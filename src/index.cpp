@@ -182,7 +182,7 @@ void index_tf_idf() {
     documentsMagnitudesContainer.push_back(documentTfIdfSum);
   }
   auto finalDocumentsMagnitudesContainer =
-      builder.CreateVector(documentsMagnitudesContainer);
+      builder.CreateVectorOfSortedTables(&documentsMagnitudesContainer);
 
   auto root_payload = tfIdfIndex::CreateMainPayload(
       builder, sortedTfIdfIndexContainer, numberOfDocuments,

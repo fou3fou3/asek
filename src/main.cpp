@@ -1,11 +1,11 @@
 #include "globals.hpp"
 #include "index.hpp"
 #include "search.hpp"
+#include "tfIdfIndex_generated.h"
 #include <GLFW/glfw3.h>
 #include <Windows.h>
 #include <format>
 #include <iostream>
-#include <nlohmann/json.hpp>
 #include <set>
 #include <shellapi.h>
 #include <string.h>
@@ -32,10 +32,12 @@ int main(int argc, char *argv[]) {
     index();
     return 0;
   } else if (first_argument == "search") {
-    auto tfIdfIndex = extract_json_from_file(TFIDF_INDEX_PATH);
-    auto tfIdfOfAllWords = tfIdfIndex[0];
-    auto numberOfDocuments = tfIdfIndex[1];
-    auto documentsTfIdfSumSquared = tfIdfIndex[2];
+
+    std::vector<char> indexData = load_flatbuffer_from_disk(TFIDF_INDEX_PATH);
+    if (indexData.empty()) {
+      return -1;
+    }
+    auto tfIdfIndex = tfIdfIndex::GetMainPayload(indexData.data());
 
     std::string second_argument = argv[2];
     if (second_argument == "imgui") {
@@ -105,9 +107,7 @@ int main(int argc, char *argv[]) {
           ImGui::SameLine();
           if (ImGui::Button("search")) {
             searchResults.clear();
-            searchResults =
-                search_tfidf(tfIdfOfAllWords, searchQuery, numberOfDocuments,
-                             documentsTfIdfSumSquared);
+            searchResults = search_tfidf(tfIdfIndex, searchQuery);
           };
 
           ImGui::Separator();

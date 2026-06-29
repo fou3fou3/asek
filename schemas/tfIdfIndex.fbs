@@ -13,14 +13,14 @@ table WordsToDocumentsTfIdf {
 
 
 table DocumentMagnitude {
-  first: string;
+  first: string (key);
   second: double;
 }
 
 
 table MainPayload {
   tfidf_all_words: [WordsToDocumentsTfIdf];    // tf idf of all words (and theire corresponding documents)
-  some_uint: uint32;                  // Number of documents
+  number_of_documents: uint32;                  // Number of documents
   documents_magnitudes: [DocumentMagnitude];	  // Documents words tf idfs squared sum
 }
 
