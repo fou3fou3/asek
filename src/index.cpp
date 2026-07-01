@@ -4,9 +4,11 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <libstemmer.h>
 #include <ratio>
 #include <string>
 #include <tuple>
@@ -16,7 +18,7 @@
 void read_words_frequencies_from_buffer(
     const std::vector<char> &buffer,
     std::unordered_map<std::string, uint32_t> &wordsFrequencies,
-    uint32_t &numberOfWordsInDocument) {
+    uint32_t &numberOfWordsInDocument, sb_stemmer *stemmer) {
   const char *ptr = buffer.data();
   const char *end = ptr + buffer.size();
 
@@ -46,7 +48,13 @@ void read_words_frequencies_from_buffer(
     }
 
     if (!(realWord == "")) {
-      wordsFrequencies[realWord] += 1;
+      const sb_symbol *stemmed_raw = sb_stemmer_stem(
+          stemmer, reinterpret_cast<const sb_symbol *>(realWord.c_str()),
+          realWord.length());
+
+      std::string stemmed_str(reinterpret_cast<const char *>(stemmed_raw));
+
+      wordsFrequencies[stemmed_str] += 1;
       wordCount++;
     }
   }
@@ -57,7 +65,7 @@ void read_words_frequencies_from_buffer(
 void get_words_frequencies_from_document(
     const std::filesystem::directory_entry &entry,
     std::unordered_map<std::string, uint32_t> &wordsFrequencies,
-    uint32_t &numberOfWordsInDocument) {
+    uint32_t &numberOfWordsInDocument, sb_stemmer *stemmer) {
 
   std::ifstream document(entry.path(), std::ios::binary | std::ios::ate);
 
@@ -71,7 +79,7 @@ void get_words_frequencies_from_document(
   std::vector<char> buffer(size);
   if (document.read(buffer.data(), size)) {
     read_words_frequencies_from_buffer(buffer, wordsFrequencies,
-                                       numberOfWordsInDocument);
+                                       numberOfWordsInDocument, stemmer);
   }
 
   document.close();
@@ -80,7 +88,8 @@ void get_words_frequencies_from_document(
 size_t calculate_tf_of_all_words(
     const std::filesystem::path &dirPath,
     std::unordered_map<std::string, std::unordered_map<std::string, double>>
-        &tfIdfOfAllWords) {
+        &tfIdfOfAllWords,
+    sb_stemmer *stemmer) {
   size_t numberOfDocuments = 0;
 
   if (std::filesystem::exists(dirPath) &&
@@ -97,7 +106,7 @@ size_t calculate_tf_of_all_words(
           std::string fileName = entry.path().filename().string();
 
           get_words_frequencies_from_document(entry, documentWordsFrequencies,
-                                              numberOfWordsInDocument);
+                                              numberOfWordsInDocument, stemmer);
 
           for (const auto &wordFrequency : documentWordsFrequencies) {
             tfIdfOfAllWords[wordFrequency.first][fileName] =
@@ -120,6 +129,7 @@ void index_tf_idf() {
   size_t numberOfDocuments;
   std::unordered_map<std::string, double> documentsTfIdfSumSquared;
   auto start = std::chrono::high_resolution_clock::now();
+  sb_stemmer *stemmer = sb_stemmer_new("english", nullptr);
 
   try {
     std::cout << "Reading files \n";
@@ -129,10 +139,13 @@ void index_tf_idf() {
 
     std::cout << "Execution time: " << duration.count() << " ms\n";
 
-    numberOfDocuments = calculate_tf_of_all_words(dirPath, tfOfAllWords);
+    numberOfDocuments =
+        calculate_tf_of_all_words(dirPath, tfOfAllWords, stemmer);
   } catch (const std::filesystem::filesystem_error &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }
+
+  sb_stemmer_delete(stemmer);
 
   std::cout << "Initializing builder \n";
   auto end = std::chrono::high_resolution_clock::now();

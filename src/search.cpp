@@ -2,6 +2,7 @@
 #include "tfIdfIndex_generated.h"
 #include <cmath>
 #include <cstdint>
+#include <libstemmer.h>
 #include <set>
 #include <sstream>
 #include <string>
@@ -25,10 +26,20 @@ search_tfidf(const tfIdfIndex::MainPayload *tfIdfIndex, std::string query) {
   std::istringstream stream(query);
   std::string word;
 
+  sb_stemmer *stemmer = sb_stemmer_new("english", nullptr);
   while (stream >> word) {
-    queryWordsTfIdf[word] += 1;
+
+    const sb_symbol *stemmed_raw = sb_stemmer_stem(
+        stemmer, reinterpret_cast<const sb_symbol *>(word.c_str()),
+        word.length());
+
+    std::string wordStem(reinterpret_cast<const char *>(stemmed_raw));
+
+    queryWordsTfIdf[wordStem] += 1;
     numberOfWordsInQuery += 1;
   }
+
+  sb_stemmer_delete(stemmer);
 
   std::unordered_map<std::string, std::unordered_map<std::string, float>>
       documentsQueryWordsTfIdf;

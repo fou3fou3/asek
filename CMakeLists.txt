@@ -11,6 +11,10 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(Flatbuffers REQUIRED)
 
+find_path(LIBSTEMMER_INCLUDE_DIR NAMES libstemmer.h)
+find_library(LIBSTEMMER_LIBRARY NAMES stemmer)
+
+
 set(SCHEMA_FILE "${CMAKE_CURRENT_SOURCE_DIR}/schemas/tfIdfIndex.fbs")
 set(GENERATED_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(GENERATED_HEADER "${GENERATED_OUTPUT_DIR}/tfidf_index_generated.h")
@@ -35,7 +39,9 @@ target_link_libraries(asek PRIVATE
     imgui::imgui
     glfw
 	OpenGL::GL
-)
+	${LIBSTEMMER_LIBRARY}
+	)
+
 
 target_include_directories(asek PRIVATE include ${flatbuffers_INCLUDE_DIRS}
-    ${GENERATED_OUTPUT_DIR})
+    ${GENERATED_OUTPUT_DIR} ${LIBSTEMMER_INCLUDE_DIR})
