@@ -1,30 +1,17 @@
 #include "globals.hpp"
 #include "tfIdfIndex_generated.h"
+#include "utils.hpp"
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <ratio>
 #include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-
-void SaveFlatBufferToDisk(flatbuffers::FlatBufferBuilder &builder,
-                          const std::string &filename) {
-  uint8_t *buf = builder.GetBufferPointer();
-  size_t size = builder.GetSize();
-
-  std::ofstream outfile(filename, std::ios::binary | std::ios::out);
-
-  if (!outfile.is_open()) {
-    std::cerr << "Failed to open file for writing: " << filename << std::endl;
-    return;
-  }
-
-  outfile.write(reinterpret_cast<const char *>(buf), size);
-  outfile.close();
-}
 
 void read_words_frequencies_from_buffer(
     const std::vector<char> &buffer,
@@ -112,17 +99,14 @@ size_t calculate_tf_of_all_words(
           get_words_frequencies_from_document(entry, documentWordsFrequencies,
                                               numberOfWordsInDocument);
 
-          for (auto wordFrequency : documentWordsFrequencies) {
+          for (const auto &wordFrequency : documentWordsFrequencies) {
             tfIdfOfAllWords[wordFrequency.first][fileName] =
                 (1.0f * wordFrequency.second) / numberOfWordsInDocument;
-            ;
           }
         }
       } catch (const std::filesystem::filesystem_error &e) {
         std::cerr << "Error: " << e.what() << "\n";
       }
-
-      std::cout << entry.path() << "\n";
     }
   }
 
@@ -135,16 +119,36 @@ void index_tf_idf() {
       tfOfAllWords;
   size_t numberOfDocuments;
   std::unordered_map<std::string, double> documentsTfIdfSumSquared;
+  auto start = std::chrono::high_resolution_clock::now();
 
   try {
+    std::cout << "Reading files \n";
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::milli> duration = end - start;
+
+    std::cout << "Execution time: " << duration.count() << " ms\n";
+
     numberOfDocuments = calculate_tf_of_all_words(dirPath, tfOfAllWords);
   } catch (const std::filesystem::filesystem_error &e) {
     std::cerr << "Error: " << e.what() << "\n";
   }
 
-  flatbuffers::FlatBufferBuilder builder(4096);
+  std::cout << "Initializing builder \n";
+  auto end = std::chrono::high_resolution_clock::now();
+
+  std::chrono::duration<double, std::milli> duration = end - start;
+
+  std::cout << "Execution time: " << duration.count() << " ms\n";
+
+  flatbuffers::FlatBufferBuilder builder(2000 * 1024 * 1024);
   std::vector<flatbuffers::Offset<tfIdfIndex::WordsToDocumentsTfIdf>>
       tfIdfIndexContainer;
+
+  std::cout << "Calculating tf idf & saving to builder \n";
+  end = std::chrono::high_resolution_clock::now();
+  duration = end - start;
+  std::cout << "Execution time: " << duration.count() << " ms\n";
 
   for (const auto &[word, documentsTf] : tfOfAllWords) {
 
@@ -191,7 +195,7 @@ void index_tf_idf() {
 
   uint8_t *buf = builder.GetBufferPointer();
 
-  SaveFlatBufferToDisk(builder, TFIDF_INDEX_PATH);
+  save_flatbuffer_to_disk(builder, TFIDF_INDEX_PATH);
 }
 
 void index() {

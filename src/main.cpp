@@ -2,6 +2,7 @@
 #include "index.hpp"
 #include "search.hpp"
 #include "tfIdfIndex_generated.h"
+#include "utils.hpp"
 #include <GLFW/glfw3.h>
 #include <Windows.h>
 #include <format>

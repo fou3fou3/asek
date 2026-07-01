@@ -2,34 +2,10 @@
 #include "tfIdfIndex_generated.h"
 #include <cmath>
 #include <cstdint>
-#include <fstream>
-#include <iostream>
 #include <set>
 #include <sstream>
 #include <string>
-
-
 #include <unordered_map>
-
-std::vector<char> load_flatbuffer_from_disk(const std::string &filename) {
-  std::ifstream infile(filename, std::ios::binary | std::ios::ate);
-
-  if (!infile.is_open()) {
-    std::cerr << "Failed to open file for reading: " << filename << std::endl;
-    return {};
-  }
-
-  std::streamsize size = infile.tellg();
-  infile.seekg(0, std::ios::beg);
-
-  std::vector<char> buffer(size);
-
-  if (!infile.read(buffer.data(), size)) {
-    std::cerr << "Error reading file data." << std::endl;
-  }
-
-  return buffer;
-}
 
 std::multiset<SearchResult, CompareSearchResults>
 search_tfidf(const tfIdfIndex::MainPayload *tfIdfIndex, std::string query) {

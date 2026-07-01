@@ -15,7 +15,5 @@ struct CompareSearchResults {
   }
 };
 
-std::vector<char> load_flatbuffer_from_disk(const std::string &filename);
-
 std::multiset<SearchResult, CompareSearchResults>
 search_tfidf(const tfIdfIndex::MainPayload *tfIdfIndex, std::string query);

@@ -26,6 +26,7 @@ add_executable(asek
     src/main.cpp
 	src/index.cpp
 	src/search.cpp
+	src/utils.cpp
 
 	${GENERATED_HEADER}
 )
